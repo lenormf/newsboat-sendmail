@@ -25,11 +25,11 @@ Dependencies
 You can setup a virtual environment and install the above dependencies
 within it with the following commands:
 
----
+```
 $ python3 -mvenv .env
 $ source .env/bin/activate
 $ pip3 install -r requirements.txt
----
+```
 
 Configuration
 -------------
@@ -54,9 +54,9 @@ loaded from the configuration file (if any).
 
 Run the following command to learn more about the command-line options:
 
----
+```
 $ ./newsboat-sendmail.py -h
----
+```
 
 Usage
 -----
@@ -73,10 +73,10 @@ will not modify the https://github.com/newsboat/newsboat[Newsboat] database
 or send any emails - only print the commands that would be run. Combine it
 with the "debug" mode to tweak your configuration further:
 
----
+```
 # Update the https://github.com/newsboat/newsboat[Newsboat] database
 to get some unread items in
 $ newsboat -x reload
 # Debug, dry run - append your custom CLI options
 $ ./newsboat-sendmail.py -d -n
----
+```
