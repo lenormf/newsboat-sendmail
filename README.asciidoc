@@ -1,0 +1,82 @@
+newsboat-sendmail
+=================
+
+`newsboat-sendmail` is a script that sends all unread RSS items in the user's
+https://github.com/newsboat/newsboat[https://github.com/newsboat/newsboat[Newsboat]]
+database to a given email address, and marks them as read.
+
+It doesn't cache any data, synchronises nicely with
+https://github.com/newsboat/newsboat[Newsboat] (lock-file support),
+lets a `sendmail`-compatible utility handle sending email (no handling
+of credentials), and is fairly extensively configurable through an INI
+configuration file and/or command-line options.
+
+*Do not use this tool without backing up your
+https://github.com/newsboat/newsboat[Newsboat] database (`cache.db`)
+beforehand!*
+
+Dependencies
+------------
+
+- Python3
+- https://www.crummy.com/software/BeautifulSoup/[BeautifulSoup4]: to extract
+  links out of HTML formatted RSS items and into a list
+
+You can setup a virtual environment and install the above dependencies
+within it with the following commands:
+
+---
+$ python3 -mvenv .env
+$ source .env/bin/activate
+$ pip3 install -r requirements.txt
+---
+
+Configuration
+-------------
+
+To store configuration settings on disk, create file `sendmail.cfg` in
+the same directory as https://github.com/newsboat/newsboat[Newsboat]'s
+`config`. Depending on your setup, that directory might be `~/.newsboat`
+or `$XDG_CONFIG_HOME/newsboat` (`$XDG_CONFIG_HOME` defaults to `~/.config`
+if unset).
+
+The configuration file is written in the INI
+format, and follows the same rules described in
+https://docs.python.org/3/library/configparser.html#quick-start[the Python
+documentation]. Note that interpolations are not enabled during parsing.
+
+Refer to the example link:sendmail.cfg[sendmail.cfg] for more information
+about the format of the file and supported values.
+
+If you're not interested in storing settings, command-line options can
+be passed to the script directly. Command-line options override the ones
+loaded from the configuration file (if any).
+
+Run the following command to learn more about the command-line options:
+
+---
+$ ./newsboat-sendmail.py -h
+---
+
+Usage
+-----
+
+The only information the script requires is what addresses to send the
+emails to.
+
+You might want to tweak what utility is used to actually send the emails
+(e.g. https://marlam.de/msmtp/[msmtp]), what template the emails will use
+(e.g. plaintext) etc. in which case, refer to the "Configuration" section above.
+
+Either way, you can verify your settings by using the "dry run" mode, which
+will not modify the https://github.com/newsboat/newsboat[Newsboat] database
+or send any emails - only print the commands that would be run. Combine it
+with the "debug" mode to tweak your configuration further:
+
+---
+# Update the https://github.com/newsboat/newsboat[Newsboat] database
+to get some unread items in
+$ newsboat -x reload
+# Debug, dry run - append your custom CLI options
+$ ./newsboat-sendmail.py -d -n
+---
