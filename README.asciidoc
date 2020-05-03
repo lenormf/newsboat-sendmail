@@ -2,7 +2,7 @@ newsboat-sendmail
 =================
 
 `newsboat-sendmail` is a script that sends all unread RSS items in the user's
-https://github.com/newsboat/newsboat[https://github.com/newsboat/newsboat[Newsboat]]
+https://github.com/newsboat/newsboat[Newsboat]
 database to a given email address, and marks them as read.
 
 It doesn't cache any data, synchronises nicely with
