@@ -146,10 +146,15 @@ class NewsboatBase:
                 }
 
                 rss_nb_items = db.execute("SELECT COUNT(*) FROM `rss_item` WHERE `unread` = 1 AND `feedurl` = ?", (rss_feed["rssurl"],)).fetchone()[0]
+
+                logging.info("number of unread items in the feed: %d", rss_nb_items)
+
                 idx_item = 0
                 for rss_item in db.execute("SELECT * FROM `rss_item` WHERE `unread` = 1 AND `feedurl` = ? ORDER BY `pubDate` ASC", (rss_feed["rssurl"],)):
                     envelope = email.message.EmailMessage()
                     idx_item += 1
+
+                    logging.info("handling item #%d", idx_item)
 
                     try:
                         rss_item_date = datetime.date.fromtimestamp(rss_item["pubDate"])
