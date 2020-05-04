@@ -1,0 +1,166 @@
+.TH NEWSBOAT-SENDMAIL 1
+
+.SH NAME
+
+newsboat-sendmail \- A companion script that sends unread RSS items in Newsboat through email
+
+.SH SYNOPSIS
+
+.PP
+.B newsboat-sendmail
+[\fB\-h\fR] [\fB\-v\fR] [\fB\-d\fR] [\fB\-n\fR] [\fB\-u\fR] [\fB\-x\fR] [\fB\-s\fR]
+[\fB\-C\fR \fIpath_config\fR]
+[\fB\-J\fR \fIsubject_template\fR]
+[\fB\-B\fR \fIbody_template\fR]
+[\fB\-T\fR \fIhtml|plain\fR]
+[\fB\-S\fR \fIsendmail_cmd\fR]
+[\fB\-E\fR \fIemail_addresses\fR]
+
+.SH DESCRIPTION
+
+Newsboat Sendmail grabs unread items in the Newsboat database, formats them
+and sends them over email. Items successfully sent are marked as read in
+the Newsboat cache.
+
+.SH OPTIONS
+
+.TP
+.B \-h, \-\-help
+show this help message and exit
+
+.TP
+.B \-v, \-\-verbose
+display information messages
+
+.TP
+.B \-d, \-\-debug
+display debug messages
+
+.TP
+.B \-n, \-\-dry-run
+do not modify the database, only print commands that would otherwise have been run
+
+.TP
+.B \-u, \-\-update
+update the database before sending the emails
+
+.TP
+.B \-x, \-\-no-config
+do not load any configuration file
+
+.TP
+.B \-s, \-\-show-rss-links
+display all feed links computed by Newsboat, and quit
+
+.TP
+.B \-C, \-\-config \fIpath_config\fR
+path to the configuration file
+
+.TP
+.B \-J, \-\-subject-template \fIsubject_template\fR
+template of the subject of outgoing emails
+
+.TP
+.B \-B, \-\-body-template \fIbody_template\fR
+template of the body of outgoing emails
+
+.TP
+.B \-T, \-\-content-type \fIhtml|plain\fR
+send plain text emails, or HTML ones
+
+.TP
+.B \-S, \-\-sendmail-cmd \fIsendmail_cmd\fR
+command using a sendmail-compatible tool to send emails
+
+.TP
+.B \-E, \-\-emails \fIemails\fR
+list of email addresses to send the feed items to, shell-quoted
+
+.SH ENVIRONMENT
+
+.TP
+.BR XDG_CONFIG_HOME
+defaults to \fI~/.config\fR if undefined
+
+.SH FILES
+
+.TP
+.BR sendmail.cfg
+optional configuration file that stores global and feed-specific settings, expected at \fI~/.newsboat/sendmail.cfg\fR, or \fI$XDG_CONFIG_HOME/newsboat/sendmail.cfg\fR \- command-line options override the values loaded from this file
+
+.SH EXAMPLE CONFIGURATION FILE
+
+.nf
+[DEFAULT]
+# command used to send emails, must include the {emails} template
+sendmail_cmd = msmtp -a rss-notifications -F newsboat-sendmail -- {emails}
+
+# shell-quoted list of email addresses, inserted into `sendmail_cmd` at runtime
+emails = notifications@ma.il
+
+# template of the outgoing emails' subject
+# the following expansions are supported:
+#   - rss_feed_title:  "title" of the RSS feed, as resolved by Newsboat (c.f. section documentation below)
+#   - rss_feed_alias:  alias of the RSS feed, declared in subsequent sections
+#   - rss_item_title:  title of the RSS item
+#   - rss_item_author: creator of the RSS item
+#   - rss_item_date:   date that RSS item was created
+#   - rss_item_link:   link of the external contents associated with the RSS item
+#   - rss_item_index:  1-based index of the current unread RSS item (relative to the `rss_nb_items` value)
+#   - rss_nb_items:    total amount of unread RSS items in the current RSS feed
+subject_template = [RSS][{rss_feed_alias}][{rss_item_index}/{rss_nb_items}] {rss_item_title}
+
+# format of the date available in the {rss_item_date} expansion (c.f. `subject_template`)
+# c.f. https://docs.python.org/3/library/datetime.html#strftime-strptime-behavior
+date_format = %c
+
+# subsequent non-default sections are named after the feed "link" computed by Newsboat
+# the direct feed URL is purposefully not being used here, in order to avoid tokens/credentials
+# from being stored in a file other than the user's Newsboat configuration
+# you can get a list of all Newsboat feeds "links" using the script's `--show-rss-links` command-line flag
+[https://site.org/blog/]
+
+# arbitrary string that populates the `rss_feed_alias` expansion (c.f. `subject_template`)
+alias = site-blog
+
+# controls the Content-Type header of the outgoing email: plain, html
+content_type = plain
+
+# template of the outgoing emails' body
+# the following expansions are supported, in addition to all the ones available in the `subject_template`
+#   - rss_item_content: contents of the RSS item, as stored by Newsboat
+# when the content type is set to "html", the following expansions are also supported:
+#   - rss_item_content_astext:   contents of the RSS item stripped of all HTML and "textified"
+#   - rss_item_content_reflinks: contents of the RSS item with all HTML links listed after it
+body_template = Feed: {rss_feed_title}
+    Title: {rss_item_title}
+    Author: {rss_item_author}
+    Date: {rss_item_date}
+    Link: {rss_item_link}
+    
+    {rss_item_content_astext}
+.fi
+
+.SH RETURN VALUES
+
+The script returns \fI0\fR on success, \fI2\fR when an error occured during the process of sending emails (including trying to read the RSS cache), \fI1\fR otherwise.
+
+.SH EXAMPLES
+
+.PP
+Dry-run, to verify the configuration:
+
+.nf
+.RS
+newsboat-sendmail -d -n
+.RE
+.fi
+
+.PP
+Update the Newsboat cache, and send emails:
+
+.nf
+.RS
+newsboat-sendmail -u
+.RE
+.fi
