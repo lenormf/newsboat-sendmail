@@ -6,6 +6,7 @@
 
 import os
 import sys
+import fcntl
 import shlex
 import logging
 import sqlite3
@@ -281,6 +282,8 @@ class Newsboat(NewsboatBase):
     def __init__(self, config):
         super().__init__(config)
 
+        self._lock_fd = None
+
     def Lock(self):
         p = pathlib.Path(self.path_cache_lock)
 
@@ -291,18 +294,25 @@ class Newsboat(NewsboatBase):
         except (OSError, PermissionError) as e:
             raise NewsboatError("unable to create cache lock file: %s" % e)
 
-        if p.is_file():
-            raise NewsboatError("the lock file already exists")
+        try:
+            self._lock_fd = os.open(p, os.O_WRONLY | os.O_CREAT, mode=0o600)
+            fcntl.lockf(self._lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            raise NewsboatError("unable to acquire the lock-file, is Newsboat running? %s" % e)
 
-        with p.open("w") as fout:
-            fout.write("%d" % os.getpid())
+        # NOTE: assume that getting a PID and writing to the lock-file will go as expected
+        my_pid = "%d" % os.getpid()
+        os.write(self._lock_fd, my_pid.encode())
 
     def Unlock(self):
-        p = pathlib.Path(self.path_cache_lock)
-
         logging.info("unlocking the database cache")
 
-        p.unlink(missing_ok=True)
+        try:
+            fcntl.lockf(self._lock_fd, fcntl.LOCK_UN)
+            os.close(self._lock_fd)
+            os.unlink(self.path_cache_lock)
+        except OSError as e:
+            raise NewsboatError("unable to release the lock-file: %s" % e)
 
     def Update(self):
         logging.info("updating the database cache")
