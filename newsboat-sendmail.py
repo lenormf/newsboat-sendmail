@@ -69,18 +69,22 @@ class NewsboatBase:
         self.config = config
 
         home = os.getenv("HOME")
-        path_dir_config_legacy = os.path.join(home, ".newsboat")
-        path_dir_config_xdg = os.path.join(os.getenv("XDG_CONFIG_HOME") or os.path.join(home, ".config"), "newsboat")
+        xdg_config_home = os.getenv("XDG_CONFIG_HOME")
+        xdg_data_home = os.getenv("XDG_DATA_HOME")
 
-        if os.path.isdir(path_dir_config_legacy):
-            self.dir_config = path_dir_config_legacy
-            self.dir_data = path_dir_config_legacy
-        elif os.path.isdir(path_dir_config_xdg):
-            path_dir_data_xdg = os.path.join(os.getenv("XDG_DATA_HOME") or os.path.join(home, ".local", "share"), "newsboat")
-            self.dir_config = path_dir_config_xdg
-            self.dir_data = path_dir_data_xdg
-        else:
-            raise NewsboatError("unable to detect newsboat data directories")
+        self.dir_config = xdg_config_home or os.path.join(home, ".config")
+        self.dir_data = xdg_data_home or os.path.join(home, ".local", "share")
+
+        self.dir_config = os.path.join(self.dir_config, "newsboat")
+        self.dir_data = os.path.join(self.dir_data, "newsboat")
+
+        if not os.path.isdir(self.dir_config):
+            logging.debug("the XDG configuration directory doesn't exit, rolling back to the HOME-based path")
+            self.dir_config = os.path.join(home, ".newsboat")
+
+        if not os.path.isdir(self.dir_data):
+            logging.debug("the XDG data directory doesn't exit, rolling back to the HOME-based path")
+            self.dir_data = os.path.join(home, ".newsboat")
 
         self.path_cache_lock = os.path.join(self.dir_data, NewsboatBase.FILENAME_CACHE_LOCK)
         self.path_cache = os.path.join(self.dir_data, NewsboatBase.FILENAME_CACHE)
