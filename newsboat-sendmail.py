@@ -44,7 +44,7 @@ class Defaults:
 class NewsboatError(Exception): pass
 
 
-class NewsboatConfig(configparser.ConfigParser):
+class NewsboatSendmailConfig(configparser.ConfigParser):
     def __init__(self):
         super().__init__(interpolation=None)
 
@@ -60,9 +60,50 @@ class NewsboatConfig(configparser.ConfigParser):
             raise NewsboatError("unable to parse file: %s" % path)
 
 
+class NewsboatConfig:
+    def __init__(self, path):
+        self._config = configparser.ConfigParser(
+            delimiters=(' ', '\t'),
+            comment_prefixes=('#'),
+            converters={
+                "qstring": NewsboatConfig.parse_qstring,
+            },
+        )
+
+        try:
+            with open(path, "r") as fin:
+                data = fin.read()
+        except OSError as e:
+            raise NewsboatError("unable to open configuration file: %s" % e)
+
+        try:
+            self._config.read_string("[DEFAULT]\n%s" % data)
+        except configparser.Error as e:
+            raise NewsboatError("unable to parse configuration file: %s" % e)
+
+    def __contains__(self, key):
+        return self._config.has_option("DEFAULT", key)
+
+    def __getitem__(self, key):
+        raw_value = self._config["DEFAULT"][key]
+
+        if raw_value.startswith('"'):
+            return self._config["DEFAULT"].getqstring(key)
+        else:
+            return raw_value
+
+    @staticmethod
+    def parse_qstring(s):
+        try:
+            # XXX: shouldn't happen, but if it ever does, at least the script won't wait for data on stdin
+            assert s is not None
+            return shlex.split(s)[0]
+        except ValueError:
+            raise NewsboatError("unable to parse value: %s" % s)
+
+
 class NewsboatBase:
     CMD_RELOAD = ["newsboat", "-x", "reload"]
-    FILENAME_CACHE_LOCK = "cache.db.lock"
     FILENAME_CACHE = "cache.db"
 
     def __init__(self, config):
@@ -86,8 +127,21 @@ class NewsboatBase:
             logging.debug("the XDG data directory doesn't exit, rolling back to the HOME-based path")
             self.dir_data = os.path.join(home, ".newsboat")
 
-        self.path_cache_lock = os.path.join(self.dir_data, NewsboatBase.FILENAME_CACHE_LOCK)
         self.path_cache = os.path.join(self.dir_data, NewsboatBase.FILENAME_CACHE)
+
+        path_newsboat_config = os.path.join(self.dir_config, "config")
+        if os.path.isfile(path_newsboat_config):
+            logging.info("loading the Newsboat configuration file")
+            newsboat_config = NewsboatConfig(path_newsboat_config)
+            if "cache-file" in newsboat_config:
+                self.path_cache = newsboat_config["cache-file"]
+
+        self.path_cache_lock = "%s.lock" % self.path_cache
+
+        logging.debug("configuration directory: %s", self.dir_config)
+        logging.debug("data directory: %s", self.dir_data)
+        logging.debug("path to the cache: %s", self.path_cache)
+        logging.debug("path to the cache lock file: %s", self.path_cache_lock)
 
     def LoadConfig(self, path=None):
         path_config = path or os.path.join(self.dir_config, Defaults.FILENAME_CFG)
@@ -413,8 +467,8 @@ def main(av):
         logging.info("dry-run mode enabled, emails will not be sent, the database will not be modified, and the commands that would otherwise modify it will be printed")
 
     try:
-        newsboat_config = NewsboatConfig()
-        newsboat = NewsboatDryRun(newsboat_config) if cli_options.dry_run else Newsboat(newsboat_config)
+        newsboat_sendmail_config = NewsboatSendmailConfig()
+        newsboat = NewsboatDryRun(newsboat_sendmail_config) if cli_options.dry_run else Newsboat(newsboat_sendmail_config)
 
         if cli_options.show_rss_links:
             newsboat.ShowFeedLinks()
@@ -424,13 +478,13 @@ def main(av):
             newsboat.LoadConfig(cli_options.config)
 
         if cli_options.sendmail_cmd:
-            newsboat_config["DEFAULT"]["sendmail_cmd"] = cli_options.sendmail_cmd
+            newsboat_sendmail_config["DEFAULT"]["sendmail_cmd"] = cli_options.sendmail_cmd
         if cli_options.emails:
-            newsboat_config["DEFAULT"]["emails"] = cli_options.emails
+            newsboat_sendmail_config["DEFAULT"]["emails"] = cli_options.emails
         if cli_options.subject_template:
-            newsboat_config["DEFAULT"]["subject_template"] = cli_options.subject_template
+            newsboat_sendmail_config["DEFAULT"]["subject_template"] = cli_options.subject_template
         if cli_options.body_template:
-            newsboat_config["DEFAULT"]["body_template"] = cli_options.body_template
+            newsboat_sendmail_config["DEFAULT"]["body_template"] = cli_options.body_template
 
         if cli_options.update:
             newsboat.Update()
