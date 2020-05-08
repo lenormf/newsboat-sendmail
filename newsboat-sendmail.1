@@ -82,11 +82,65 @@ list of email addresses to send the feed items to, shell-quoted
 .BR XDG_CONFIG_HOME
 defaults to \fI~/.config\fR if undefined
 
+.TP
+.BR XDG_DATA_HOME
+defaults to \fI~/.local/share\fR if undefined
+
 .SH FILES
+
+Those are the files that \fBnewsboat-sendmail\fR cares about, refer to the
+"FILE DETECTION ALGORITHM" section that documents the different heuristics
+used to auto-detect them on the system.
 
 .TP
 .BR sendmail.cfg
-optional configuration file that stores global and feed-specific settings, expected at \fI~/.newsboat/sendmail.cfg\fR, or \fI$XDG_CONFIG_HOME/newsboat/sendmail.cfg\fR \- command-line options override the values loaded from this file
+optional configuration file that stores global and feed-specific settings \-
+command-line options override the values loaded from this file
+
+.TP
+.BR config
+configuration file that stores \fBnewsboat\fR settings
+
+.TP
+.BR cache.db
+database owned by \fBnewsboat\fR that contains the RSS items, whose name
+and location can be customized in \fIconfig\fR
+
+.TP
+.BR cache.db.lock
+lock-file handled by both \fBnewsboat\fR and \fBnewsboat-sendmail\fR that
+synchronizes access to \fIcache.db\fR, whose name and location is that of
+\fIcache.db\fR with \fI.lock\fR appended
+
+.SH FILE DETECTION ALGORITHM
+
+The files documented in the "FILES" section are auto-detected following
+the same algorithm used by \fBnewsboat\fR.
+
+The configuration directory contains \fIconfig\fR and \fIsendmail.cfg\fR,
+and determined according to the first of the following values that points
+at an existing directory:
+
+.nf
+.RS
+- \fI$XDG_CONFIG_HOME\fR, if set, or \fI~/.config/newsboat\fR otherwise
+- \fI~/.newsboat\fR
+.RE
+.fi
+
+Similarly, the data directory that contains \fIcache.db\fR and
+\fIcache.db.lock\fR takes the following into account:
+
+.nf
+.RS
+- \fI$XDG_DATA_HOME\fR, if set, or \fI~/.local/share/newsboat\fR otherwise
+- \fI~/.newsboat\fR
+.RE
+.fi
+
+Note that if a \fIconfig\fR file is found in the configuration directory, it
+will be parsed, and a custom location for the \fIcache.db\fR file extracted
+from it (\fIcache-file\fR option directive).
 
 .SH EXAMPLE CONFIGURATION FILE
 
