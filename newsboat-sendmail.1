@@ -2,7 +2,7 @@
 
 .SH NAME
 
-newsboat-sendmail \- A companion script that sends unread RSS items in Newsboat through email
+newsboat-sendmail \- A companion script that sends unread RSS items in \fBnewsboat\fR through email
 
 .SH SYNOPSIS
 
@@ -18,9 +18,9 @@ newsboat-sendmail \- A companion script that sends unread RSS items in Newsboat 
 
 .SH DESCRIPTION
 
-Newsboat Sendmail grabs unread items in the Newsboat database, formats them
+newsboat-sendmail grabs unread items in the Newsboat database, formats them
 and sends them over email. Items successfully sent are marked as read in
-the Newsboat cache.
+the database cache.
 
 .SH OPTIONS
 
@@ -197,7 +197,17 @@ body_template = Feed: {rss_feed_title}
 
 .SH RETURN VALUES
 
-The script returns \fI0\fR on success, \fI2\fR when an error occured during the process of sending emails (including trying to read the RSS cache), \fI1\fR otherwise.
+.TP
+0
+no errors
+
+.TP
+1
+generic error
+
+.TP
+2
+error while trying to send emails or trying to read the database cache
 
 .SH EXAMPLES
 
@@ -218,3 +228,7 @@ Update the Newsboat cache, and send emails:
 newsboat-sendmail -u
 .RE
 .fi
+
+.SH SEE ALSO
+
+\fBnewboat\fR(1)
