@@ -26,7 +26,8 @@ class Defaults:
     CMD_SENDMAIL = "sendmail -F newsboat-sendmail -- {emails}"
     TMPL_SUBJECT = "[RSS][{rss_feed_title}] {rss_item_title}"
     CONTENT_TYPE = "html"
-    TMPL_BODY = """<html>
+    TMPL_BODY = """<!DOCTYPE html>
+<html>
 <body>
 <ul>
 <li>Feed: {rss_feed_title}</li>
