@@ -197,8 +197,11 @@ class NewsboatBase:
 
                 try:
                     sendmail_command = shlex.split(feed_config["sendmail_cmd"].format(emails=emails))
+                    sendmail_command = shlex.join(sendmail_command)
                 except ValueError as e:
                     raise NewsboatError("unable to parse the sendmail command: %s" % e)
+
+                logging.debug("joined sendmail command: %s", sendmail_command)
 
                 context_feed = {
                     "rss_feed_title": flatten_string(rss_feed["title"]),
@@ -386,7 +389,7 @@ class Newsboat(NewsboatBase):
             try:
                 logging.info("sending email")
 
-                p = subprocess.Popen(sendmail_command,
+                p = subprocess.Popen(sendmail_command, shell=True,
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
