@@ -400,9 +400,9 @@ class Newsboat(NewsboatBase):
                 exit_code = p.wait()
 
                 if stdout:
-                    logging.debug("stdout: %s", stdout.decode("utf-8"))
+                    logging.debug("stdout: %s", stdout.decode("utf-8", "replace"))
                 if stderr:
-                    logging.debug("stderr: %s", stderr.decode("utf-8"))
+                    logging.debug("stderr: %s", stderr.decode("utf-8", "replace"))
 
                 if exit_code:
                     raise NewsboatError("the sendmail command exited with error code: %d" % exit_code)
