@@ -64,6 +64,7 @@ class NewsboatSendmailConfig(configparser.ConfigParser):
 class NewsboatConfig:
     def __init__(self, path):
         self._config = configparser.ConfigParser(
+            strict=False,
             delimiters=(' ', '\t'),
             comment_prefixes=('#'),
             converters={
