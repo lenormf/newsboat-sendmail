@@ -18,6 +18,19 @@ import configparser
 import email.message
 
 import bs4
+import trafilatura
+
+
+def str_to_bool(
+    value,
+    trueish_values=["yes", "1", "enabled", "true"],
+    falseish_values=["no", "0", "disabled", "false"],
+):
+    if value in trueish_values:
+        return True
+    elif value in falseish_values:
+        return False
+    raise ValueError("Unable to infer true-ness of value: %s" % value)
 
 
 class Defaults:
@@ -40,6 +53,7 @@ class Defaults:
 </body>
 </html>"""
     FMT_DATE = "%a %b %d %Y"
+    FULL_TEXT = False
 
 
 class NewsboatError(Exception): pass
@@ -55,6 +69,8 @@ class NewsboatSendmailConfig(configparser.ConfigParser):
         self["DEFAULT"]["content_type"] = Defaults.CONTENT_TYPE
         self["DEFAULT"]["body_template"] = Defaults.TMPL_BODY
         self["DEFAULT"]["date_format"] = Defaults.FMT_DATE
+        # NOTE: Only string options are supported
+        self["DEFAULT"]["full_text"] = "yes" if Defaults.FULL_TEXT else "no"
 
     def ReadFile(self, path):
         if path not in self.read(path):
@@ -247,12 +263,42 @@ class NewsboatBase:
                     if not subject:
                         logging.warn("the email's subject is empty")
                     envelope["Subject"] = subject
+                    rss_item_content = rss_item["content"]
+                    rss_item_content_full_text = rss_item_content
+                    if str_to_bool(feed_config["full_text"].lower()):
+                        result = trafilatura.fetch_url(rss_item["url"])
+                        if result is None:
+                            logging.error("Unable to fetch URL")
+                            rss_item_content_full_text = ""
+                        else:
+                            contents = None
+                            try:
+                                contents = trafilatura.extract(
+                                    result,
+                                    url=rss_item["url"],
+                                    favor_precision=True,
+                                    favor_recall=True,
+                                    output_format="xml",
+                                    include_formatting=True,
+                                    include_images=True,
+                                    include_links=True,
+                                    include_tables=True,
+                                    include_comments=False,
+                                )
+                            except:
+                                logging.exception("Unable to extract page contents")
+                            if contents is None:
+                                logging.error("Unable to extract page contents")
+                                rss_item_content_full_text = ""
+                            else:
+                                logging.debug("extracted full page contents: %s", contents)
+                                rss_item_content_full_text = contents
 
                     content_type = feed_config["content_type"]
                     # TODO: class dedicated to handling a given content type
                     if content_type == "html":
                         try:
-                            soup = bs4.BeautifulSoup(rss_item["content"], features="html.parser")
+                            soup = bs4.BeautifulSoup(rss_item_content, features="html.parser")
                         # NOTE: BeautifulSoup doesn't do any parsing, so exceptions are implementation dependent - we consider any to be a fatal error
                         except:
                             logging.error("unable to parse HTML, skipping")
@@ -287,15 +333,16 @@ class NewsboatBase:
 
                         rss_item_content_reflinks = str(soup)
                     else:
-                        rss_item_content_astext = rss_item["content"]
-                        rss_item_content_reflinks = rss_item["content"]
+                        rss_item_content_astext = rss_item_content
+                        rss_item_content_reflinks = rss_item_content
 
                     # TODO: only pass HTML-related values when the content type is HTML?
                     contents = feed_config["body_template"].format(
                         **context_full,
-                        rss_item_content=rss_item["content"],
+                        rss_item_content=rss_item_content,
                         rss_item_content_astext=rss_item_content_astext,
                         rss_item_content_reflinks=rss_item_content_reflinks,
+                        rss_item_content_full_text=rss_item_content_full_text,
                     )
                     if not contents:
                         logging.warn("the email's body is empty")
@@ -446,6 +493,7 @@ class CliOptions(argparse.Namespace):
         parser.add_argument("-u", "--update", action="store_true", help="update the database before sending the emails")
         parser.add_argument("-x", "--no-config", action="store_true", help="do not load any configuration file")
         parser.add_argument("-s", "--show-rss-links", action="store_true", help="display all feed links computed by Newsboat, and quit")
+        parser.add_argument("-f", "--full-text", action="store_true", help="forcibly set the content of each item with the page it points to")
         parser.add_argument("-C", "--config", help="path to the configuration file")
         parser.add_argument("-S", "--sendmail-cmd", help="command using a sendmail-compatible tool to send emails")
         parser.add_argument("-E", "--emails", help="list of email addresses to send the feed items to, shell-quoted")
@@ -490,6 +538,8 @@ def main(av):
             newsboat_sendmail_config["DEFAULT"]["subject_template"] = cli_options.subject_template
         if cli_options.body_template:
             newsboat_sendmail_config["DEFAULT"]["body_template"] = cli_options.body_template
+        if cli_options.full_text:
+            newsboat_sendmail_config["DEFAULT"]["full_text"] = "yes" if cli_options.full_text else "no"
 
         if cli_options.update:
             newsboat.Update()
